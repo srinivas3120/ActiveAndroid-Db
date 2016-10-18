@@ -1,87 +1,66 @@
 package com.activeandroid;
 
-/*
- * Copyright (C) 2010 Michael Pardo
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 import android.content.Context;
 
 import com.activeandroid.util.Log;
 
-import net.sqlcipher.database.SQLiteDatabase;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
 
 public final class ActiveAndroid {
-	//////////////////////////////////////////////////////////////////////////////////////
-	// PUBLIC METHODS
-	//////////////////////////////////////////////////////////////////////////////////////
 
-	public static void initialize(Context context) {
-		initialize(new Configuration.Builder(context).create());
-	}
+  private static HashMap<String,Cache> hashMap=new HashMap<>();
 
-	public static void initialize(Configuration configuration) {
-		initialize(configuration, true);
-	}
+  //////////////////////////////////////////////////////////////////////////////////////
+  // PUBLIC METHODS
+  //////////////////////////////////////////////////////////////////////////////////////
 
-	public static void initialize(Context context, boolean loggingEnabled) {
-		initialize(new Configuration.Builder(context).create(), loggingEnabled);
-	}
+  public static DbUtils initializeDb(Context context) {
+    return initializeDb(new Configuration.Builder(context).create());
+  }
 
-	public static void initialize(Configuration configuration, boolean loggingEnabled) {
-		// Set logging enabled first
-		setLoggingEnabled(loggingEnabled);
-		Cache.initialize(configuration);
-	}
+  public static DbUtils initializeDb(Configuration configuration) {
+    Cache cache = initialize(configuration);
+    DbUtils dbUtils =new DbUtils(cache);
+    hashMap.put(configuration.getDatabaseName(),cache);
+    return dbUtils;
+  }
 
-	public static void clearCache() {
-		Cache.clear();
-	}
+  public static Cache initialize(Configuration configuration) {
+    return initialize(configuration, true);
+  }
 
-	public static void dispose() {
-		Cache.dispose();
-	}
+  private static Cache initialize(Configuration configuration, boolean loggingEnabled) {
+    // Set logging enabled first
+    setLoggingEnabled(loggingEnabled);
+    Cache cache = new Cache(configuration);
+    return cache;
+  }
 
-	public static void setLoggingEnabled(boolean enabled) {
-		Log.setEnabled(enabled);
-	}
+  private static void setLoggingEnabled(boolean enabled) {
+    Log.setEnabled(enabled);
+  }
 
-	public static SQLiteDatabase getDatabase() {
-		return Cache.openDatabase();
-	}
+  public static void dispose() {
+    if (hashMap==null){
+      return;
+    }
+    Iterator it = hashMap.entrySet().iterator();
+    while (it.hasNext()) {
+      try{
+        Map.Entry pair = (Map.Entry)it.next();
+        ((Cache)pair.getValue()).dispose();
+        hashMap.remove(pair.getKey());
+        it.remove(); // avoids a ConcurrentModificationException
+      }catch (Exception e){
+        e.printStackTrace();
+      }
+    }
+  }
 
-	public static void beginTransaction() {
-		Cache.openDatabase().beginTransaction();
-	}
+  public void dispose(Cache cache) {
+    cache.dispose();
+  }
 
-	public static void endTransaction() {
-		Cache.openDatabase().endTransaction();
-	}
-
-	public static void setTransactionSuccessful() {
-		Cache.openDatabase().setTransactionSuccessful();
-	}
-
-	public static boolean inTransaction() {
-		return Cache.openDatabase().inTransaction();
-	}
-
-	public static void execSQL(String sql) {
-		Cache.openDatabase().execSQL(sql);
-	}
-
-	public static void execSQL(String sql, Object[] bindArgs) {
-		Cache.openDatabase().execSQL(sql, bindArgs);
-	}
 }

@@ -17,7 +17,6 @@ package com.activeandroid.query;
  */
 
 import android.text.TextUtils;
-
 import com.activeandroid.Cache;
 import com.activeandroid.Model;
 
@@ -26,14 +25,17 @@ public final class Join implements Sqlable {
 		LEFT, OUTER, INNER, CROSS
 	}
 
+	private Cache mCache;
 	private From mFrom;
 	private Class<? extends Model> mType;
 	private String mAlias;
 	private JoinType mJoinType;
 	private String mOn;
 	private String[] mUsing;
+	private String mDb;
 
-	Join(From from, Class<? extends Model> table, JoinType joinType) {
+	Join(Cache cache, From from, Class<? extends Model> table, JoinType joinType) {
+		mCache = cache;
 		mFrom = from;
 		mType = table;
 		mJoinType = joinType;
@@ -41,6 +43,11 @@ public final class Join implements Sqlable {
 
 	public Join as(String alias) {
 		mAlias = alias;
+		return this;
+	}
+
+	public Join db(String db) {
+		mDb = db;
 		return this;
 	}
 
@@ -69,7 +76,11 @@ public final class Join implements Sqlable {
 		}
 
 		sql.append("JOIN ");
-		sql.append(Cache.getTableName(mType));
+		if (mDb != null) {
+			sql.append(mDb);
+			sql.append(".");
+		}
+		sql.append(mCache.getTableName(mType));
 		sql.append(" ");
 
 		if (mAlias != null) {

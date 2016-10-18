@@ -1,35 +1,17 @@
 package com.activeandroid;
 
-/*
- * Copyright (C) 2010 Michael Pardo
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
+import android.content.Context;
+import com.activeandroid.serializer.TypeSerializer;
+import com.activeandroid.util.Log;
+import com.activeandroid.util.ReflectionUtils;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import android.content.Context;
-
-import com.activeandroid.serializer.TypeSerializer;
-import com.activeandroid.util.Log;
-import com.activeandroid.util.ReflectionUtils;
-
 public class Configuration {
 
-    public final static String SQL_PARSER_LEGACY = "legacy";
-    public final static String SQL_PARSER_DELIMITED = "delimited";
+	public final static String SQL_PARSER_LEGACY = "legacy";
+	public final static String SQL_PARSER_DELIMITED = "delimited";
 
 	//////////////////////////////////////////////////////////////////////////////////////
 	// PRIVATE MEMBERS
@@ -66,9 +48,9 @@ public class Configuration {
 	public int getDatabaseVersion() {
 		return mDatabaseVersion;
 	}
-	
+
 	public String getSqlParser() {
-	    return mSqlParser;
+		return mSqlParser;
 	}
 
 	public List<Class<? extends Model>> getModelClasses() {
@@ -128,6 +110,17 @@ public class Configuration {
 			mCacheSize = DEFAULT_CACHE_SIZE;
 		}
 
+		public Builder(Context context, Configuration seed){
+			this(context);
+
+			mDatabaseName = seed.mDatabaseName;
+			mDatabaseVersion = seed.mDatabaseVersion;
+			mSqlParser = seed.mSqlParser;
+			mModelClasses = seed.mModelClasses;
+			mTypeSerializers = seed.mTypeSerializers;
+			mCacheSize = seed.mCacheSize;
+		}
+
 		//////////////////////////////////////////////////////////////////////////////////////
 		// PUBLIC METHODS
 		//////////////////////////////////////////////////////////////////////////////////////
@@ -146,10 +139,10 @@ public class Configuration {
 			mDatabaseVersion = databaseVersion;
 			return this;
 		}
-		
+
 		public Builder setSqlParser(String sqlParser) {
-		    mSqlParser = sqlParser;
-		    return this;
+			mSqlParser = sqlParser;
+			return this;
 		}
 
 		public Builder addModelClass(Class<? extends Model> modelClass) {
@@ -202,15 +195,12 @@ public class Configuration {
 			Configuration configuration = new Configuration(mContext);
 			configuration.mCacheSize = mCacheSize;
 
-			Log.i("configuration.mDatabaseName  "+configuration.mDatabaseName);
 			// Get database name from meta-data
 			if (mDatabaseName != null) {
 				configuration.mDatabaseName = mDatabaseName;
 			} else {
 				configuration.mDatabaseName = getMetaDataDatabaseNameOrDefault();
 			}
-
-			Log.i("configuration.mDatabaseVersion  "+configuration.mDatabaseVersion);
 			// Get database version from meta-data
 			if (mDatabaseVersion != null) {
 				configuration.mDatabaseVersion = mDatabaseVersion;
@@ -220,11 +210,11 @@ public class Configuration {
 
 			// Get SQL parser from meta-data
 			if (mSqlParser != null) {
-			    configuration.mSqlParser = mSqlParser;
+				configuration.mSqlParser = mSqlParser;
 			} else {
-			    configuration.mSqlParser = getMetaDataSqlParserOrDefault();
+				configuration.mSqlParser = getMetaDataSqlParserOrDefault();
 			}
-			
+
 			// Get model classes from meta-data
 			if (mModelClasses != null) {
 				configuration.mModelClasses = mModelClasses;
@@ -256,7 +246,6 @@ public class Configuration {
 
 		private String getMetaDataDatabaseNameOrDefault() {
 			String aaName = ReflectionUtils.getMetaData(mContext, AA_DB_NAME);
-			Log.i("ReflectionUtils.getMetaData(mContext, AA_DB_NAME): "+aaName);
 			if (aaName == null) {
 				aaName = DEFAULT_DB_NAME;
 			}
@@ -266,7 +255,6 @@ public class Configuration {
 
 		private int getMetaDataDatabaseVersionOrDefault() {
 			Integer aaVersion = ReflectionUtils.getMetaData(mContext, AA_DB_VERSION);
-			Log.i("ReflectionUtils.getMetaData(mContext, AA_DB_VERSION): "+aaVersion);
 			if (aaVersion == null || aaVersion == 0) {
 				aaVersion = 1;
 			}
@@ -275,11 +263,11 @@ public class Configuration {
 		}
 
 		private String getMetaDataSqlParserOrDefault() {
-		    final String mode = ReflectionUtils.getMetaData(mContext, AA_SQL_PARSER);
-		    if (mode == null) {
-		        return DEFAULT_SQL_PARSER;
-		    }
-		    return mode;
+			final String mode = ReflectionUtils.getMetaData(mContext, AA_SQL_PARSER);
+			if (mode == null) {
+				return DEFAULT_SQL_PARSER;
+			}
+			return mode;
 		}
 
 		private List<Class<? extends Model>> loadModelList(String[] models) {

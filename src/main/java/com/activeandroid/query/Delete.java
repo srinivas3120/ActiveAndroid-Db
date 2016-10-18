@@ -16,14 +16,18 @@ package com.activeandroid.query;
  * limitations under the License.
  */
 
+import com.activeandroid.Cache;
 import com.activeandroid.Model;
 
 public final class Delete implements Sqlable {
-	public Delete() {
+	private Cache mCache;
+
+	public Delete(Cache mCache) {
+		this.mCache=mCache;
 	}
 
 	public From from(Class<? extends Model> table) {
-		return new From(table, this);
+		return new From(mCache, table, this);
 	}
 
 	@Override

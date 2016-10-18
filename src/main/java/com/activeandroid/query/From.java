@@ -1,193 +1,350 @@
-//
-// Source code recreated from a .class file by IntelliJ IDEA
-// (powered by Fernflower decompiler)
-//
-
 package com.activeandroid.query;
 
+/*
+ * Copyright (C) 2010 Michael Pardo
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import android.text.TextUtils;
 import com.activeandroid.Cache;
 import com.activeandroid.Model;
-import com.activeandroid.query.Join;
-import com.activeandroid.query.Select;
-import com.activeandroid.query.Sqlable;
 import com.activeandroid.query.Join.JoinType;
+import com.activeandroid.util.Log;
 import com.activeandroid.util.SQLiteUtils;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Iterator;
 import java.util.List;
 
 public final class From implements Sqlable {
   private Sqlable mQueryBase;
+
+  private Cache mCache;
   private Class<? extends Model> mType;
   private String mAlias;
   private List<Join> mJoins;
-  private String mWhere;
+  private final StringBuilder mWhere = new StringBuilder();
   private String mGroupBy;
   private String mHaving;
   private String mOrderBy;
   private String mLimit;
   private String mOffset;
+  private String mDb;
+
   private List<Object> mArguments;
 
-  public From(Class<? extends Model> table, Sqlable queryBase) {
-    this.mType = table;
-    this.mJoins = new ArrayList();
-    this.mQueryBase = queryBase;
-    this.mJoins = new ArrayList();
-    this.mArguments = new ArrayList();
+  public From(Cache cache, Class<? extends Model> table, Sqlable queryBase) {
+    mCache = cache;
+    mType = table;
+    mJoins = new ArrayList<Join>();
+    mQueryBase = queryBase;
+
+    mJoins = new ArrayList<Join>();
+    mArguments = new ArrayList<Object>();
   }
 
   public From as(String alias) {
-    this.mAlias = alias;
+    mAlias = alias;
+    return this;
+  }
+
+  public From db(String db) {
+    mDb = db;
     return this;
   }
 
   public Join join(Class<? extends Model> table) {
-    Join join = new Join(this, table, (JoinType)null);
-    this.mJoins.add(join);
+    Join join = new Join(mCache, this, table, null);
+    mJoins.add(join);
     return join;
   }
 
   public Join leftJoin(Class<? extends Model> table) {
-    Join join = new Join(this, table, JoinType.LEFT);
-    this.mJoins.add(join);
+    Join join = new Join(mCache, this, table, JoinType.LEFT);
+    mJoins.add(join);
     return join;
   }
 
   public Join outerJoin(Class<? extends Model> table) {
-    Join join = new Join(this, table, JoinType.OUTER);
-    this.mJoins.add(join);
+    Join join = new Join(mCache, this, table, JoinType.OUTER);
+    mJoins.add(join);
     return join;
   }
 
   public Join innerJoin(Class<? extends Model> table) {
-    Join join = new Join(this, table, JoinType.INNER);
-    this.mJoins.add(join);
+    Join join = new Join(mCache, this, table, JoinType.INNER);
+    mJoins.add(join);
     return join;
   }
 
   public Join crossJoin(Class<? extends Model> table) {
-    Join join = new Join(this, table, JoinType.CROSS);
-    this.mJoins.add(join);
+    Join join = new Join(mCache, this, table, JoinType.CROSS);
+    mJoins.add(join);
     return join;
   }
 
-  public From where(String where) {
-    this.mWhere = where;
-    this.mArguments.clear();
+  public From where(String clause) {
+    // Chain conditions if a previous condition exists.
+    if (mWhere.length() > 0) {
+      mWhere.append(" AND ");
+    }
+    mWhere.append(clause);
     return this;
   }
 
-  public From where(String where, Object... args) {
-    this.mWhere = where;
-    this.mArguments.clear();
-    this.mArguments.addAll(Arrays.asList(args));
+  public From where(String clause, Object... args) {
+    where(clause).addArguments(args);
+    return this;
+  }
+
+  public From and(String clause) {
+    return where(clause);
+  }
+
+  public From and(String clause, Object... args) {
+    return where(clause, args);
+  }
+
+  public From or(String clause) {
+    if (mWhere.length() > 0) {
+      mWhere.append(" OR ");
+    }
+    mWhere.append(clause);
+    return this;
+  }
+
+  public From or(String clause, Object... args) {
+    or(clause).addArguments(args);
     return this;
   }
 
   public From groupBy(String groupBy) {
-    this.mGroupBy = groupBy;
+    mGroupBy = groupBy;
     return this;
   }
 
   public From having(String having) {
-    this.mHaving = having;
+    mHaving = having;
     return this;
   }
 
   public From orderBy(String orderBy) {
-    this.mOrderBy = orderBy;
+    mOrderBy = orderBy;
     return this;
   }
 
   public From limit(int limit) {
-    return this.limit(String.valueOf(limit));
+    return limit(String.valueOf(limit));
   }
 
   public From limit(String limit) {
-    this.mLimit = limit;
+    mLimit = limit;
     return this;
   }
 
   public From offset(int offset) {
-    return this.offset(String.valueOf(offset));
+    return offset(String.valueOf(offset));
   }
 
   public From offset(String offset) {
-    this.mOffset = offset;
+    mOffset = offset;
     return this;
   }
 
   void addArguments(Object[] args) {
-    this.mArguments.addAll(Arrays.asList(args));
+    for (Object arg : args) {
+      if (arg.getClass() == boolean.class || arg.getClass() == Boolean.class) {
+        arg = (arg.equals(true) ? 1 : 0);
+      }
+      mArguments.add(arg);
+    }
   }
 
-  public String toSql() {
-    String sql = "";
-    sql = sql + this.mQueryBase.toSql();
-    sql = sql + "FROM " + Cache.getTableName(this.mType) + " ";
-    if(this.mAlias != null) {
-      sql = sql + "AS " + this.mAlias + " ";
+  private void addFrom(final StringBuilder sql) {
+    sql.append("FROM ");
+
+    if (mDb != null) {
+      sql.append(mDb);
+      sql.append(".");
+    }
+    sql.append(mCache.getTableName(mType)).append(" ");
+    if (mAlias != null) {
+      sql.append("AS ");
+      sql.append(mAlias);
+      sql.append(" ");
+    }
+  }
+
+  private void addJoins(final StringBuilder sql) {
+    for (final Join join : mJoins) {
+      sql.append(join.toSql());
+    }
+  }
+
+  private void addWhere(final StringBuilder sql) {
+    if (mWhere.length() > 0) {
+      sql.append("WHERE ");
+      sql.append(mWhere);
+      sql.append(" ");
+    }
+  }
+
+  private void addGroupBy(final StringBuilder sql) {
+    if (mGroupBy != null) {
+      sql.append("GROUP BY ");
+      sql.append(mGroupBy);
+      sql.append(" ");
+    }
+  }
+
+  private void addHaving(final StringBuilder sql) {
+    if (mHaving != null) {
+      sql.append("HAVING ");
+      sql.append(mHaving);
+      sql.append(" ");
+    }
+  }
+
+  private void addOrderBy(final StringBuilder sql) {
+    if (mOrderBy != null) {
+      sql.append("ORDER BY ");
+      sql.append(mOrderBy);
+      sql.append(" ");
+    }
+  }
+
+  private void addLimit(final StringBuilder sql) {
+    if (mLimit != null) {
+      sql.append("LIMIT ");
+      sql.append(mLimit);
+      sql.append(" ");
+    }
+  }
+
+  private void addOffset(final StringBuilder sql) {
+    if (mOffset != null) {
+      sql.append("OFFSET ");
+      sql.append(mOffset);
+      sql.append(" ");
+    }
+  }
+
+  private String sqlString(final StringBuilder sql) {
+
+    final String sqlString = sql.toString().trim();
+
+    // Don't waste time building the string
+    // unless we're going to log it.
+    if (Log.isEnabled()) {
+      Log.v(sqlString + " " + TextUtils.join(",", getArguments()));
     }
 
-    Join join;
-    for(Iterator var3 = this.mJoins.iterator(); var3.hasNext(); sql = sql + join.toSql()) {
-      join = (Join)var3.next();
-    }
+    return sqlString;
+  }
 
-    if(this.mWhere != null) {
-      sql = sql + "WHERE " + this.mWhere + " ";
-    }
+  @Override public String toSql() {
+    final StringBuilder sql = new StringBuilder();
+    sql.append(mQueryBase.toSql());
 
-    if(this.mGroupBy != null) {
-      sql = sql + "GROUP BY " + this.mGroupBy + " ";
-    }
+    addFrom(sql);
+    addJoins(sql);
+    addWhere(sql);
+    addGroupBy(sql);
+    addHaving(sql);
+    addOrderBy(sql);
+    addLimit(sql);
+    addOffset(sql);
 
-    if(this.mHaving != null) {
-      sql = sql + "HAVING " + this.mHaving + " ";
-    }
+    return sqlString(sql);
+  }
 
-    if(this.mOrderBy != null) {
-      sql = sql + "ORDER BY " + this.mOrderBy + " ";
-    }
+  public String toExistsSql() {
 
-    if(this.mLimit != null) {
-      sql = sql + "LIMIT " + this.mLimit + " ";
-    }
+    final StringBuilder sql = new StringBuilder();
+    sql.append("SELECT EXISTS(SELECT 1 ");
 
-    if(this.mOffset != null) {
-      sql = sql + "OFFSET " + this.mOffset + " ";
-    }
+    addFrom(sql);
+    addJoins(sql);
+    addWhere(sql);
+    addGroupBy(sql);
+    addHaving(sql);
+    addLimit(sql);
+    addOffset(sql);
 
-    return sql.trim();
+    sql.append(")");
+
+    return sqlString(sql);
+  }
+
+  public String toCountSql() {
+
+    final StringBuilder sql = new StringBuilder();
+    sql.append("SELECT COUNT(*) ");
+
+    addFrom(sql);
+    addJoins(sql);
+    addWhere(sql);
+    addGroupBy(sql);
+    addHaving(sql);
+    addLimit(sql);
+    addOffset(sql);
+
+    return sqlString(sql);
   }
 
   public <T extends Model> List<T> execute() {
-    if(this.mQueryBase instanceof Select) {
-      return SQLiteUtils.rawQuery(this.mType, this.toSql(), this.getArguments());
+    if (mQueryBase instanceof Select) {
+      return SQLiteUtils.rawQuery(mCache, mType, toSql(), getArguments());
     } else {
-      SQLiteUtils.execSql(this.toSql(), this.getArguments());
+      SQLiteUtils.execSql(mCache, toSql(), getArguments());
+            /*mCache.getContext().getContentResolver().notifyChange(
+                ContentProvider.createUri(mType, null), null);*/
       return null;
     }
   }
 
   public <T extends Model> T executeSingle() {
-    if(this.mQueryBase instanceof Select) {
-      this.limit(1);
-      return SQLiteUtils.rawQuerySingle(this.mType, this.toSql(), this.getArguments());
+    if (mQueryBase instanceof Select) {
+      limit(1);
+      return (T) SQLiteUtils.rawQuerySingle(mCache, mType, toSql(), getArguments());
     } else {
-      SQLiteUtils.execSql(this.toSql(), this.getArguments());
+      limit(1);
+      SQLiteUtils.rawQuerySingle(mCache, mType, toSql(), getArguments()).delete(mCache);
       return null;
     }
   }
 
-  private String[] getArguments() {
-    int size = this.mArguments.size();
-    String[] args = new String[size];
+  /**
+   * Gets a value indicating whether the query returns any rows.
+   *
+   * @return <code>true</code> if the query returns at least one row; otherwise, <code>false</code>.
+   */
+  public boolean exists() {
+    return SQLiteUtils.intQuery(mCache, toExistsSql(), getArguments()) != 0;
+  }
 
-    for(int i = 0; i < size; ++i) {
-      args[i] = this.mArguments.get(i).toString();
+  /**
+   * Gets the number of rows returned by the query.
+   */
+  public int count() {
+    return SQLiteUtils.intQuery(mCache, toCountSql(), getArguments());
+  }
+
+  public String[] getArguments() {
+    final int size = mArguments.size();
+    final String[] args = new String[size];
+
+    for (int i = 0; i < size; i++) {
+      args[i] = mArguments.get(i).toString();
     }
 
     return args;

@@ -25,7 +25,7 @@ public class Application extends android.app.Application {
   public void onCreate() {
     super.onCreate();
     SQLiteDatabase.loadLibs(this);
-    ActiveAndroid.initialize(this);
+    ActiveAndroid.initializeDb(this);
   }
 
   @Override
